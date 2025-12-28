@@ -2,3 +2,6 @@
 
 Serwis odpowiedzialny za wykrywanie zdarzeń akustycznych
 oraz ich klasyfikację.
+
+Przygotowywany czysto pod prace licencjacką,
+wraz z możliwością podpięcia się do czujki terenowej
