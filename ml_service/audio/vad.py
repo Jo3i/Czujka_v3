@@ -2,7 +2,7 @@ import numpy as np
 
 
 class EnergyVAD:
-    def __init__(self, threshold: float = 0.01):
+    def __init__(self, threshold: float = 0.001):
         """
         threshold – próg energii sygnału
         """
