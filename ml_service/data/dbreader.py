@@ -1,27 +1,31 @@
-from pathlib import Path
 import sqlite3
 import pandas as pd
+from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "events.db"  # lub "data/events.db", jeśli baza w folderze data
+DB_PATH = Path(__file__).parent / "events.db"
 
-def read_events(label_filter=None):
+def read_events(limit=50):
     conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql_query("SELECT * FROM events", conn)
 
-    # konwersja timestamp na datetime
-    df['timestamp'] = pd.to_datetime(df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+    query = """
+    SELECT
+        id,
+        datetime(timestamp, 'localtime') AS time,
+        label,
+        ROUND(score, 2) AS score
+    FROM events
+    ORDER BY timestamp DESC
+    LIMIT ?
+    """
 
-    # sortowanie po czasie malejąco (od najnowszego)
-    df = df.sort_values(by='timestamp', ascending=False)
-
-    # filtrowanie po etykiecie, jeśli podano
-    if label_filter is not None:
-        df = df[df['label'].isin(label_filter)]
-
+    df = pd.read_sql_query(query, conn, params=(limit,))
     conn.close()
+
     return df
 
+
 if __name__ == "__main__":
-    events_df = read_events()
-    print(events_df)
+    df = read_events(limit=20)
+
+    print("\n📊 Ostatnie zdarzenia (od najnowszych):\n")
+    print(df.to_string(index=False))
