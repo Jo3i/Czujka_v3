@@ -16,3 +16,4 @@ Thumbs.db
 # Zapisy dźwiękowe
 data/events.db
 data/features/
+data/raw

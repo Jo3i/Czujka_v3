@@ -1,22 +1,21 @@
 import sounddevice as sd
 import numpy as np
 
-
 class AudioRecorder:
-    def __init__(self, sample_rate=16000, channels=1):
-        self.sample_rate = sample_rate
-        self.channels = channels
+    def __init__(self, sr=16000):
+        self.sr = sr
 
-    def record(self, duration: float) -> np.ndarray:
-        """
-        Nagrywa dźwięk z mikrofonu przez określony czas.
-        """
+    def record(self, duration):
         print(f"[INFO] Nagrywanie {duration} s...")
+
         audio = sd.rec(
-            int(duration * self.sample_rate),
-            samplerate=self.sample_rate,
-            channels=self.channels,
+            int(duration * self.sr),
+            samplerate=self.sr,
+            channels=1,
             dtype="float32"
         )
+
         sd.wait()
+
+        # mono → 1D
         return audio.flatten()

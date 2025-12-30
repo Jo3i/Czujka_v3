@@ -12,7 +12,8 @@ def read_events(limit=50):
         id,
         datetime(timestamp, 'localtime') AS time,
         label,
-        ROUND(score, 2) AS score
+        ROUND(score, 2) AS score,
+        ROUND(duratiuon, 2) AS duration
     FROM events
     ORDER BY timestamp DESC
     LIMIT ?

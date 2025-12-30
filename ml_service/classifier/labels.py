@@ -1,6 +1,1 @@
-CLASS_LABELS = [
-    "pies",
-    "kot",
-    "ptak",
-    "inne"
-]
+LABELS = ["bird", "cat", "dog"]

@@ -1,53 +1,52 @@
+from pathlib import Path
+import time
+
 from audio.recorder import AudioRecorder
 from audio.vad import EnergyVAD
 from classifier.classify import AudioClassifier
-from monitor import init_db, log_event
-from pathlib import Path
-from datetime import datetime
-import sqlite3
-import time
-import pandas as pd
+from monitor.db import init_db, log_event
 
-# Inicjalizacja bazy
-init_db()
 
-# Tworzenie obiektów
-recorder = AudioRecorder()
-vad = EnergyVAD(threshold=0.0001)
-classifier = AudioClassifier()
+# Konfiguracja
+MODEL_PATH = Path(__file__).parent / "classifier" / "model.pkl"
+CONFIDENCE_THRESHOLD = 0.2
+RECORD_SECONDS = 2.0
 
-print("[INFO] Rozpoczynam nasłuchiwanie dźwięku... (Ctrl+C aby zatrzymać)")
 
-try:
-    while True:
-        # Nagrywanie próbki audio 2 sekundy
-        audio = recorder.record(2.0)
+def main():
+    print("[INFO] Inicjalizacja bazy danych...")
+    init_db()
 
-        if vad.is_active(audio):
-            # Klasyfikacja dźwięku
-            label, confidence = classifier.classify(audio)
-            print(f"[EVENT] Wykryto dźwięk: {label} (pewność={confidence:.2f})")
+    print("[INFO] Ładowanie komponentów...")
+    recorder = AudioRecorder()
+    vad = EnergyVAD(threshold=0.0001)
+    classifier = AudioClassifier(MODEL_PATH)
 
-            # Logowanie do bazy
-            log_event(label=label, score=confidence)
-        else:
-            print("[INFO] Cisza – brak zdarzenia")
+    print("[INFO] Start monitorowania dźwięku (Ctrl+C aby zakończyć)")
 
-        time.sleep(1)  # opcjonalna przerwa między nagraniami
+    try:
+        while True:
+            print(f"[INFO] Nagrywanie {RECORD_SECONDS} s...")
+            audio = recorder.record(RECORD_SECONDS)
 
-except KeyboardInterrupt:
-    print("\n[INFO] Monitorowanie zatrzymane przez użytkownika.")
+            if vad.is_active(audio):
+                label, confidence = classifier.classify(audio)
 
-# Funkcja do podglądu najnowszych zdarzeń
-def show_recent_events(n=10):
-    DB_PATH = Path(__file__).resolve().parent / "data" / "events.db"
-    conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql_query("SELECT * FROM events", conn)
-    df['timestamp'] = pd.to_datetime(df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
-    df = df.sort_values(by='timestamp', ascending=False)
-    print("\n--- Ostatnie zdarzenia ---")
-    print(df.head(n))
-    conn.close()
+                print(f"[EVENT] {label} | pewność={confidence:.2f}")
 
-# Po zakończeniu monitorowania pokaz ostatnie 10 zdarzeń
-show_recent_events()
+                if confidence >= CONFIDENCE_THRESHOLD:
+                    log_event(label=label, score=confidence)
+                else:
+                    print("[INFO] Zbyt niska pewność – zdarzenie odrzucone")
+
+            else:
+                print("[INFO] Cisza – brak zdarzenia")
+
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        print("\n[INFO] Monitorowanie zatrzymane przez użytkownika")
+
+
+if __name__ == "__main__":
+    main()
