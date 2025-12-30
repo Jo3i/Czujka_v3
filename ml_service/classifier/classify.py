@@ -1,24 +1,28 @@
 import numpy as np
-import random
-from classifier.labels import CLASS_LABELS
-
+from vggish.extractor import VGGishExtractor
+from classifier.features import aggregate_embeddings
+from classifier.predict import predict_label
 
 class AudioClassifier:
     def __init__(self):
-        """
-        Inicjalizacja gotowego klasyfikatora dźwięków.
-        W docelowej wersji w tym miejscu ładowany jest model.
-        """
-        print("[INFO] Klasyfikator audio zainicjalizowany")
+        self.extractor = VGGishExtractor()
 
-    def classify(self, audio: np.ndarray) -> tuple[str, float]:
+    def classify(self, audio: np.ndarray):
         """
-        Klasyfikuje fragment audio.
+        audio: surowy sygnał audio (1D numpy array)
+        """
+        # 1️⃣ Ekstrakcja cech VGGish
+        embeddings = self.extractor.extract(audio)
+        # embeddings.shape = (N, 128)
 
-        Zwraca:
-        - etykietę klasy
-        - poziom pewności predykcji
-        """
-        label = random.choice(CLASS_LABELS)
-        confidence = round(random.uniform(0.6, 0.95), 2)
+        if embeddings is None or len(embeddings) == 0:
+            return "unknown", 0.0
+
+        # 2️⃣ AGREGACJA (KROK 3)
+        features = aggregate_embeddings(embeddings)
+        # features.shape = (128,)
+
+        # 3️⃣ Predykcja klasy
+        label, confidence = predict_label(features)
+
         return label, confidence

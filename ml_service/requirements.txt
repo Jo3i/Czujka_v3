@@ -1,9 +1,12 @@
-numpy
-scipy
+#python==3.10.11
+
+numpy<2.0
+tensorflow==2.13.0
 librosa
 sounddevice
 scikit-learn
-pandas
-tensorflow==2.11.0
-tf_slim
 resampy
+pandas
+tf_slim
+joblib
+scikit-learn
