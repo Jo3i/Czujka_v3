@@ -21,4 +21,5 @@ data/event.db
 # Duże pliki binarne
 *.7z
 *.ckpt
+ml_service.7z
 ml_service/vggish/vggish_model.ckpt
