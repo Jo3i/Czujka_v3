@@ -45,10 +45,10 @@ def main():
                         location=location
                     )
                 else:
-                    print("[INFO] Zbyt niska pewność – zdarzenie odrzucone")
+                    print("[INFO] Zbyt niska pewność - zdarzenie odrzucone")
 
             else:
-                print("[INFO] Cisza – brak zdarzenia")
+                print("[INFO] Cisza - brak zdarzenia")
 
             time.sleep(1)
 
