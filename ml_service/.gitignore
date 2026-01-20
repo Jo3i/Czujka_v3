@@ -16,6 +16,7 @@ Thumbs.db
 # Zapisy dźwiękowe
 data/features/
 data/raw
+data/event.db
 
 # Duże pliki binarne
 *.7z
