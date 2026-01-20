@@ -1,15 +1,18 @@
-#import numpy as np
+import numpy as np
 
-#def aggregate_embeddings(embeddings: np.ndarray) -> np.ndarray:
-#    """
-#    embeddings: (T, 128) lub (128,) – sekwencja embeddingów VGGish
-#    return: (128,) – jeden wektor cech
-#    """
-#    if embeddings.ndim == 1 and embeddings.shape[0] == 128:
-#        # już mamy jeden wektor – nic nie robimy
-#        return embeddings
-#    elif embeddings.ndim == 2 and embeddings.shape[1] == 128:
-#        # średnia po czasie
-#        return embeddings.mean(axis=0)
-#    else:
-#        raise ValueError(f"Niepoprawny kształt embeddingów: {embeddings.shape}")
+
+def aggregate_embeddings(embeddings: np.ndarray) -> np.ndarray:
+    """
+    Agregacja embeddingów audio (np. z VGGish) do jednego wektora.
+
+    Args:
+        embeddings: tablica shape (N, D)
+
+    Returns:
+        wektor cech shape (D,)
+    """
+
+    if embeddings.ndim == 1:
+        return embeddings
+
+    return np.mean(embeddings, axis=0)

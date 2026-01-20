@@ -3,7 +3,8 @@ import numpy as np
 import librosa
 import joblib
 
-from sklearn.linear_model import LogisticRegression
+# ZMIANA: Importujemy RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report
@@ -28,6 +29,7 @@ def load_dataset():
     X = []
     y = []
 
+    # Iteracja po folderach (klasach)
     for class_dir in DATA_DIR.iterdir():
         if not class_dir.is_dir():
             continue
@@ -35,23 +37,36 @@ def load_dataset():
         label = class_dir.name
         print(f"[INFO] Klasa: {label}")
 
+        # Iteracja po plikach WAV
         for wav_file in class_dir.glob("*.wav"):
             print(f"  → {wav_file.name}")
 
-            audio, sr = librosa.load(
-                wav_file,
-                sr=16000,
-                mono=True
-            )
+            # 1. Ładowanie audio
+            try:
+                audio, sr = librosa.load(
+                    wav_file,
+                    sr=16000,
+                    mono=True
+                )
+            except Exception as e:
+                print(f"    [ERROR] Błąd ładowania pliku {wav_file.name}: {e}")
+                continue
 
+            # 2. Sprawdzenie długości (VGGish wymaga ok. 1s)
             if len(audio) < 16000:
                 print("    [WARN] Za krótki sygnał – pomijam")
                 continue
 
-            embedding = extractor.extract(audio)
+            # 3. Ekstrakcja cech (VGGish)
+            try:
+                embedding = extractor.extract(audio)
+            except Exception as e:
+                print(f"    [ERROR] Błąd VGGish dla {wav_file.name}: {e}")
+                continue
 
-            if embedding is None or embedding.shape != (128,):
-                print("    [WARN] Niepoprawny embedding – pomijam")
+            # 4. Walidacja embeddingu (czy nie jest pusty/NaN)
+            if embedding is None or embedding.shape != (128,) or np.isnan(embedding).any():
+                print(f"    [WARN] Niepoprawny embedding (za krótki plik?) – pomijam: {wav_file.name}")
                 continue
 
             X.append(embedding)
@@ -68,11 +83,11 @@ def main():
     X, y = load_dataset()
 
     if len(X) == 0:
-        raise RuntimeError("❌ Brak danych treningowych – sprawdź WAV")
+        raise RuntimeError("❌ Brak danych treningowych – sprawdź folder data/raw")
 
     print(f"[INFO] Liczba próbek: {len(X)}")
 
-    # Kodowanie etykiet
+    # Kodowanie etykiet (np. bird -> 0, cat -> 1)
     label_encoder = LabelEncoder()
     y_enc = label_encoder.fit_transform(y)
 
@@ -80,7 +95,7 @@ def main():
     for idx, cls in enumerate(label_encoder.classes_):
         print(f"  {idx} → {cls}")
 
-    # Ważenie klas
+    # Obliczanie wag dla klas (ważne przy nierównych danych)
     class_weights = compute_class_weight(
         class_weight="balanced",
         classes=np.unique(y_enc),
@@ -93,20 +108,24 @@ def main():
         label = label_encoder.inverse_transform([idx])[0]
         print(f"  {label} → {w:.2f}")
 
-    # Model
+    # Definicja modelu (Pipeline)
     model = Pipeline([
         (
             "clf",
-            LogisticRegression(
-                max_iter=2000,
-                class_weight=class_weight_dict
+            RandomForestClassifier(
+                n_estimators=200,           # Liczba drzew (więcej = stabilniej)
+                max_depth=None,             # Głębokość drzew (None = do końca)
+                class_weight=class_weight_dict, # Obsługa niezbalansowanych klas
+                random_state=42,            # Powtarzalność wyników
+                n_jobs=-1                   # Użyj wszystkich rdzeni procesora
             )
         )
     ])
 
-    print("[INFO] Trenowanie modelu...")
+    print("[INFO] Trenowanie modelu (Random Forest)...")
     model.fit(X, y_enc)
 
+    # Ewaluacja na zbiorze treningowym
     y_pred = model.predict(X)
 
     print("\n[REPORT]")
@@ -118,6 +137,7 @@ def main():
         )
     )
 
+    # Zapis modelu i encodera do pliku
     joblib.dump(
         {
             "model": model,

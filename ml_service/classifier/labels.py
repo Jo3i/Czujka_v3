@@ -1,1 +1,1 @@
-LABELS = ["bird", "cat", "dog"]
+LABELS = ["bird", "cat", "dog","frog"]

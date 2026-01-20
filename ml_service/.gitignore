@@ -14,6 +14,10 @@ __pycache__/
 Thumbs.db
 
 # Zapisy dźwiękowe
-data/events.db
 data/features/
 data/raw
+
+# Duże pliki binarne
+*.7z
+*.ckpt
+ml_service/vggish/vggish_model.ckpt

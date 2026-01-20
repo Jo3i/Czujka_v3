@@ -1,12 +1,18 @@
-#python==3.10.11
+# Rekomendowany Python: 3.10 lub 3.11
 
-numpy<2.0
-tensorflow==2.13.0
-librosa
+# TensorFlow 2.15 to ostatnia bardzo stabilna wersja przed dużymi zmianami w 2.16
+tensorflow==2.15.0  
+
+# NumPy musi być poniżej 2.0 dla TensorFlow < 2.16
+numpy<2.0           
+
+# Reszta bibliotek - najnowsze wersje są OK
+librosa>=0.10.0
 sounddevice
 scikit-learn
 resampy
 pandas
-tf_slim
 joblib
-scikit-learn
+
+# tf_slim jest wymagany przez vggish_slim.py
+tf_slim

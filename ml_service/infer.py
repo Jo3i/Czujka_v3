@@ -1,41 +1,40 @@
-from pathlib import Path
-import time
-
 from audio.recorder import AudioRecorder
 from audio.vad import EnergyVAD
 from classifier.classify import AudioClassifier
 from monitor.db import init_db, log_event
-
-
-# Konfiguracja
-MODEL_PATH = Path(__file__).parent / "classifier" / "model.pkl"
-CONFIDENCE_THRESHOLD = 0.2
-RECORD_SECONDS = 2.0
+from gps.gps_reader import GPSReader
+import time
 
 
 def main():
-    print("[INFO] Inicjalizacja bazy danych...")
     init_db()
 
     print("[INFO] Ładowanie komponentów...")
+
     recorder = AudioRecorder()
     vad = EnergyVAD(threshold=0.0001)
-    classifier = AudioClassifier(MODEL_PATH)
+    classifier = AudioClassifier()
+    gps = GPSReader()
 
     print("[INFO] Start monitorowania dźwięku (Ctrl+C aby zakończyć)")
 
     try:
         while True:
-            print(f"[INFO] Nagrywanie {RECORD_SECONDS} s...")
-            audio = recorder.record(RECORD_SECONDS)
+            audio = recorder.record(2.0)
 
             if vad.is_active(audio):
                 label, confidence = classifier.classify(audio)
 
-                print(f"[EVENT] {label} | pewność={confidence:.2f}")
+                location = gps.get_location()
 
-                if confidence >= CONFIDENCE_THRESHOLD:
-                    log_event(label=label, score=confidence)
+                print(f"[EVENT] {label} | pewność={confidence:.2f} | GPS={location}")
+
+                if confidence >= 0.7:
+                    log_event(
+                        label=label,
+                        score=confidence,
+                        location=location
+                    )
                 else:
                     print("[INFO] Zbyt niska pewność – zdarzenie odrzucone")
 
