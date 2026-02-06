@@ -16,7 +16,7 @@
 """Compute input examples for VGGish from audio waveform."""
 
 import numpy as np
-import resampy
+import scipy.signal
 
 from . import mel_features
 from . import vggish_params
@@ -53,9 +53,12 @@ def waveform_to_examples(data, sample_rate):
   # Convert to mono.
   if len(data.shape) > 1:
     data = np.mean(data, axis=1)
-  # Resample to the rate assumed by VGGish.
-  if sample_rate != vggish_params.SAMPLE_RATE:
-    data = resampy.resample(data, sample_rate, vggish_params.SAMPLE_RATE)
+# Resample to the rate assumed by VGGish.
+if sample_rate != vggish_params.SAMPLE_RATE:
+  # Obliczamy nową liczbę próbek
+  number_of_samples = round(len(data) * float(vggish_params.SAMPLE_RATE) / sample_rate)
+  # Używamy scipy zamiast resampy
+  data = scipy.signal.resample(data, number_of_samples)
 
   # Compute log mel spectrogram features.
   log_mel = mel_features.log_mel_spectrogram(
