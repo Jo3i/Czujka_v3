@@ -1,0 +1,8 @@
+# plik txt wymaganych bibliotek DO INSTALACJI Z PLIKU
+# osobno poza venv trzeba : sudo apt install python3-pandas python3-numpy python3-scipy python3-sklearn libsndfile1
+tflite-runtime
+sounddevice
+resampy
+soundfile
+joblib
+tf_slim
