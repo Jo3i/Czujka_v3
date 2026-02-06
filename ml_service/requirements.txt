@@ -1,7 +1,9 @@
 # Rekomendowany Python: 3.10 lub 3.11
 
 # TensorFlow 2.15 to ostatnia bardzo stabilna wersja przed dużymi zmianami w 2.16
-tensorflow==2.15.0  
+# Zmiana na tensorflow lite dla raspberry
+#tensorflow==2.15.0  
+tflite-runtime
 
 # NumPy musi być poniżej 2.0 dla TensorFlow < 2.16
 numpy<2.0           
