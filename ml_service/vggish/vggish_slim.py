@@ -31,6 +31,7 @@ https://github.com/tensorflow/models/blob/master/research/slim/nets/vgg.py
 """
 
 import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import tf_slim as slim
 
 from . import vggish_params as params

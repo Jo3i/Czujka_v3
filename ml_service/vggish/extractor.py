@@ -1,47 +1,65 @@
 import numpy as np
-import librosa
-import tensorflow as tf
 import os
-from . import vggish_input, vggish_slim, vggish_params
+# ZAMIANA: Używamy lekkiego runtime zamiast pełnego tensorflow
+import tflite_runtime.interpreter as tflite
 
+# Importujemy helpery do przetwarzania audio (te pliki masz w folderze)
+from . import vggish_input, vggish_params
 
 class VGGishExtractor:
     def __init__(self):
-        self.graph = tf.Graph()
-        with self.graph.as_default():
-            self.session = tf.compat.v1.Session()
-            vggish_slim.define_vggish_slim()
-            
-            # --- ZMIANA: Ładowanie wag zamiast losowej inicjalizacji ---
-            
-            # Pobieramy ścieżkę do folderu, w którym znajduje się ten plik (extractor.py)
-            current_dir = os.path.dirname(__file__)
-            # Tworzymy pełną ścieżkę do pliku modelu (musi być w tym samym folderze co skrypt)
-            checkpoint_path = os.path.join(current_dir, 'vggish_model.ckpt')
-            
-            # Ładujemy wytrenowany model
-            vggish_slim.load_vggish_slim_checkpoint(self.session, checkpoint_path)
+        # 1. Ścieżka do modelu TFLite (nie CKPT!)
+        current_dir = os.path.dirname(__file__)
+        # Musisz pobrać plik 'vggish.tflite' i wrzucić go do folderu ml_service/vggish/
+        model_filename = 'vggish.tflite'
+        self.model_path = os.path.join(current_dir, model_filename)
+
+        if not os.path.exists(self.model_path):
+            raise FileNotFoundError(f"Nie znaleziono modelu: {self.model_path}. Pobierz go!")
+
+        # 2. Inicjalizacja interpretera TFLite
+        self.interpreter = tflite.Interpreter(model_path=self.model_path)
+        self.interpreter.allocate_tensors()
+
+        # 3. Pobranie informacji o wejściu/wyjściu modelu
+        self.input_details = self.interpreter.get_input_details()
+        self.output_details = self.interpreter.get_output_details()
+        
+        # Indeks tensora wejściowego (tam gdzie wkładamy spektrogram)
+        self.input_index = self.input_details[0]['index']
+        # Indeks tensora wyjściowego (tam gdzie wychodzą embeddingi)
+        self.output_index = self.output_details[0]['index']
 
     def extract(self, audio, sample_rate=16000):
-        # Resampling, jeśli częstotliwość jest inna niż 16kHz
-        if sample_rate != 16000:
-            audio = librosa.resample(audio, orig_sr=sample_rate, target_sr=16000)
+        """
+        Przetwarza surowe audio na wektor cech (embeddings).
+        """
+        # 1. Przetwarzanie audio na spektrogramy Mel (log-mel)
+        # To korzysta z vggish_input.py (musi być czyste od tensorflow!)
+        examples = vggish_input.waveform_to_examples(audio, sample_rate)
+        
+        # TFLite wymaga typu float32
+        examples = examples.astype(np.float32)
 
-        # Konwersja audio na przykłady wejściowe dla VGGish
-        examples = vggish_input.waveform_to_examples(audio, 16000)
+        # Jeśli nagranie jest ciszą lub błędem i nie ma ramek
+        if examples.shape[0] == 0:
+            return np.zeros((128,), dtype=np.float32)
 
-        features_tensor = self.graph.get_tensor_by_name(
-            vggish_params.INPUT_TENSOR_NAME
-        )
-        embedding_tensor = self.graph.get_tensor_by_name(
-            vggish_params.OUTPUT_TENSOR_NAME
-        )
+        # 2. Obsługa dynamicznego rozmiaru (Batching)
+        # VGGish dzieli audio na fragmenty po 0.96s. 
+        # Oryginalny tensor ma kształt [?, 96, 64]. Musimy go dostosować do liczby fragmentów.
+        
+        # Zmieniamy rozmiar wejścia w locie
+        self.interpreter.resize_tensor_input(self.input_index, examples.shape)
+        self.interpreter.allocate_tensors()
 
-        # Uruchomienie sesji TensorFlow w celu uzyskania embeddingów
-        embeddings = self.session.run(
-            embedding_tensor,
-            feed_dict={features_tensor: examples}
-        )
+        # 3. Wrzucamy dane i uruchamiamy
+        self.interpreter.set_tensor(self.input_index, examples)
+        self.interpreter.invoke()
 
-        # Zwracamy średnią z embeddingów (jeden wektor dla całego nagrania)
+        # 4. Odbieramy wynik
+        embeddings = self.interpreter.get_tensor(self.output_index)
+
+        # 5. Uśredniamy wynik (jeden wektor dla całego pliku audio)
+        # VGGish zwraca [liczba_fragmentow, 128]. Robimy średnią -> [128]
         return np.mean(embeddings, axis=0)
