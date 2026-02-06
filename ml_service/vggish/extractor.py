@@ -1,7 +1,16 @@
 import numpy as np
 import os
-# ZAMIANA: Używamy lekkiego runtime zamiast pełnego tensorflow
-import tflite_runtime.interpreter as tflite
+# Używamy lekkiego runtime zamiast pełnego tensorflow
+try:
+    # Najpierw próbujemy lekką wersję (dla Raspberry Pi)
+    import tflite_runtime.interpreter as tflite
+except ImportError:
+    # Jeśli nie ma, próbujemy pełnego TensorFlow (dla Windows)
+    try:
+        import tensorflow.lite as tflite
+    except ImportError:
+        print("BŁĄD: Nie znaleziono ani tflite_runtime, ani tensorflow!")
+        raise
 
 # Importujemy helpery do przetwarzania audio (te pliki masz w folderze)
 from . import vggish_input, vggish_params

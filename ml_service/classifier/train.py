@@ -3,12 +3,17 @@ import numpy as np
 import librosa
 import joblib
 
-# ZMIANA: Importujemy RandomForestClassifier
+# Importujemy RandomForestClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report
 from sklearn.utils.class_weight import compute_class_weight
+
+import sys
+import os
+# Dodajemy katalog nadrzędny (ml_service) do ścieżki, żeby widział vggish
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from vggish.extractor import VGGishExtractor
 

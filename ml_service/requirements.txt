@@ -12,6 +12,7 @@ numpy<2.0
 librosa>=0.10.0
 sounddevice
 scikit-learn
+#dla raspvberry bo najnowsza nie jest kompatybilna wstecz scikit-learn==1.2.2
 resampy
 pandas
 joblib
