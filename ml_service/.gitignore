@@ -23,3 +23,6 @@ data/event.db
 *.ckpt
 ml_service.7z
 ml_service/vggish/vggish_model.ckpt
+
+#klucz firebase
+serviceAccountKey.json

@@ -1,1 +1,28 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Zapisy dźwiękowe
+data/features/
+data/raw
+data/event.db
+
+# Duże pliki binarne
+*.7z
+*.ckpt
 ml_service.7z
+ml_service/vggish/vggish_model.ckpt
+
+#klucz firebase
+serviceAccountKey.json
