@@ -53,7 +53,7 @@ def waveform_to_examples(data, sample_rate):
   GAIN_FACTOR = 10.0  # Used when input is floating point, to adjust the dynamic range.
   data = data * GAIN_FACTOR
   
-  data = np.clip(data, -1.0, +1.0)
+  data = np.clip(data, -1.0, 1.0)
 
   # Convert to mono.
   if len(data.shape) > 1:
