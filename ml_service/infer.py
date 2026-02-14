@@ -9,7 +9,7 @@ import numpy as np # Musi byc zaimportowane do obliczania RMS
 # --- KONFIGURACJA ---
 VAD_THRESHOLD = 0.002 
 CONFIDENCE_THRESHOLD = 0.6 
-PRE_GAIN = 10.0  # <--- TU JEST KLUCZ! Mnożymy głośność x10 PRZED analizą
+PRE_GAIN = 20.0  # <--- TU JEST KLUCZ! Mnożymy głośność x10 PRZED analizą
 # --------------------
 
 def main():
