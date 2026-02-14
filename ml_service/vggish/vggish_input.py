@@ -50,6 +50,11 @@ def waveform_to_examples(data, sample_rate):
     spectrogram, covering num_frames frames of audio and num_bands mel frequency
     bands, where the frame length is vggish_params.STFT_HOP_LENGTH_SECONDS.
   """
+  GAIN_FACTOR = 10.0  # Used when input is floating point, to adjust the dynamic range.
+  data = data * GAIN_FACTOR
+  
+  data = np.clip(data, -1.0, +1.0)
+
   # Convert to mono.
   if len(data.shape) > 1:
     data = np.mean(data, axis=1)
