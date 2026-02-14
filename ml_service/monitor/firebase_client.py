@@ -7,7 +7,7 @@ import time
 KEY_PATH = "serviceAccountKey.json"
 
 # Adres Twojej bazy Realtime Database (znajdziesz go w ustawieniach Firebase)
-DATABASE_URL = "https://console.firebase.google.com/u/0/project/czujka-1ed39/database/czujka-1ed39-default-rtdb/data/~2F"
+DATABASE_URL = "https://czujka-1ed39-default-rtdb.europe-west1.firebasedatabase.app/"
 
 _is_initialized = False
 
