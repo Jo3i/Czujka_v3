@@ -11,11 +11,11 @@ numpy<2.0
 # Reszta bibliotek - najnowsze wersje są OK
 librosa>=0.10.0
 sounddevice
-scikit-learn
-#dla raspvberry bo najnowsza nie jest kompatybilna wstecz scikit-learn==1.2.2
+scikit-learn==1.2.2 #zmiana na 1.2.2
 resampy
 pandas
 joblib
+xgboost # Dodany XGBoost jako ulepszenie dla Random Forest
 
 # tf_slim jest wymagany przez vggish_slim.py
 tf_slim

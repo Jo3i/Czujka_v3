@@ -69,8 +69,6 @@ def main():
             else:
                 print(f"[Nasłuch] Poziom: {rms:.4f}", end='\r')
 
-            time.sleep(0.1)
-
     except KeyboardInterrupt:
         print("\n[INFO] Stop.")
 

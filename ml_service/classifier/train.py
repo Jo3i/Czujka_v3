@@ -3,32 +3,38 @@ import numpy as np
 import librosa
 import joblib
 
-# Importujemy RandomForestClassifier
-from sklearn.ensemble import RandomForestClassifier
+# Import XGBoost
+from xgboost import XGBClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report
-from sklearn.utils.class_weight import compute_class_weight
+from sklearn.utils.class_weight import compute_sample_weight
 
 import sys
 import os
-# Dodajemy katalog nadrzędny (ml_service) do ścieżki, żeby widział vggish
+# Dodajemy katalog nadrzędny (ml_service) do ścieżki
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from vggish.extractor import VGGishExtractor
-
 
 # =========================
 # ŚCIEŻKI
 # =========================
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 MODEL_PATH = Path(__file__).parent / "model.pkl"
-
+FEATURES_CACHE_X = Path(__file__).parent / "features_X.npy"
+FEATURES_CACHE_Y = Path(__file__).parent / "labels_y.npy"
 
 # =========================
-# ŁADOWANIE DANYCH
+# ŁADOWANIE DANYCH (Z CACHEM)
 # =========================
 def load_dataset():
+    # Jeśli mamy zapisane cechy, ładujemy je błyskawicznie w ułamek sekundy!
+    if FEATURES_CACHE_X.exists() and FEATURES_CACHE_Y.exists():
+        print("[INFO] Znaleziono zcache'owane cechy na dysku! Ładowanie potrwa 1 sekundę...")
+        return np.load(FEATURES_CACHE_X), np.load(FEATURES_CACHE_Y)
+
+    print("[INFO] Brak cache. Rozpoczynam ciężką ekstrakcję VGGish (to potrwa...)")
     extractor = VGGishExtractor()
 
     X = []
@@ -40,100 +46,89 @@ def load_dataset():
             continue
 
         label = class_dir.name
-        print(f"[INFO] Klasa: {label}")
+        print(f"[INFO] Przetwarzam klasę: {label}")
 
-        # Iteracja po plikach WAV
         for wav_file in class_dir.glob("*.wav"):
             print(f"  → {wav_file.name}")
 
-            # 1. Ładowanie audio
             try:
-                audio, sr = librosa.load(
-                    wav_file,
-                    sr=16000,
-                    mono=True
-                )
+                audio, sr = librosa.load(wav_file, sr=16000, mono=True)
             except Exception as e:
                 print(f"    [ERROR] Błąd ładowania pliku {wav_file.name}: {e}")
                 continue
 
-            # 2. Sprawdzenie długości (VGGish wymaga ok. 1s)
             if len(audio) < 16000:
                 print("    [WARN] Za krótki sygnał – pomijam")
                 continue
 
-            # 3. Ekstrakcja cech (VGGish)
             try:
                 embedding = extractor.extract(audio)
             except Exception as e:
                 print(f"    [ERROR] Błąd VGGish dla {wav_file.name}: {e}")
                 continue
 
-            # 4. Walidacja embeddingu (czy nie jest pusty/NaN)
             if embedding is None or embedding.shape != (128,) or np.isnan(embedding).any():
-                print(f"    [WARN] Niepoprawny embedding (za krótki plik?) – pomijam: {wav_file.name}")
+                print(f"    [WARN] Niepoprawny embedding – pomijam: {wav_file.name}")
                 continue
 
             X.append(embedding)
             y.append(label)
 
-    return np.array(X), np.array(y)
+    X_arr = np.array(X)
+    y_arr = np.array(y)
+    
+    # Zapisujemy do cache, żeby już nigdy więcej nie czekać 2 godzin!
+    np.save(FEATURES_CACHE_X, X_arr)
+    np.save(FEATURES_CACHE_Y, y_arr)
+    print("[INFO] Zapisano cechy do cache'u pomyślnie.")
 
+    return X_arr, y_arr
 
 # =========================
-# TRENOWANIE
+# TRENOWANIE XGBoost
 # =========================
 def main():
-    print("[INFO] Ładowanie danych...")
+    print("[INFO] Start procesu...")
     X, y = load_dataset()
 
     if len(X) == 0:
         raise RuntimeError("❌ Brak danych treningowych – sprawdź folder data/raw")
 
-    print(f"[INFO] Liczba próbek: {len(X)}")
+    print(f"[INFO] Liczba poprawnych próbek: {len(X)}")
 
-    # Kodowanie etykiet (np. bird -> 0, cat -> 1)
+    # Kodowanie etykiet (cat -> 0, crow -> 1 itd.)
     label_encoder = LabelEncoder()
     y_enc = label_encoder.fit_transform(y)
 
-    print("[INFO] Klasy:")
-    for idx, cls in enumerate(label_encoder.classes_):
-        print(f"  {idx} → {cls}")
-
-    # Obliczanie wag dla klas (ważne przy nierównych danych)
-    class_weights = compute_class_weight(
+    print("[INFO] Obliczanie zbalansowanych wag próbek dla XGBoost...")
+    sample_weights = compute_sample_weight(
         class_weight="balanced",
-        classes=np.unique(y_enc),
         y=y_enc
     )
-    class_weight_dict = dict(enumerate(class_weights))
 
-    print("[INFO] Wagi klas:")
-    for idx, w in class_weight_dict.items():
-        label = label_encoder.inverse_transform([idx])[0]
-        print(f"  {label} → {w:.2f}")
-
-    # Definicja modelu (Pipeline)
+    # Definicja modelu XGBoost
     model = Pipeline([
         (
             "clf",
-            RandomForestClassifier(
-                n_estimators=200,           # Liczba drzew (więcej = stabilniej)
-                max_depth=None,             # Głębokość drzew (None = do końca)
-                class_weight=class_weight_dict, # Obsługa niezbalansowanych klas
-                random_state=42,            # Powtarzalność wyników
-                n_jobs=-1                   # Użyj wszystkich rdzeni procesora
+            XGBClassifier(
+                n_estimators=200,           
+                max_depth=3,                
+                learning_rate=0.1,          
+                random_state=42,            
+                n_jobs=-1                   
             )
         )
     ])
 
-    print("[INFO] Trenowanie modelu (Random Forest)...")
-    model.fit(X, y_enc)
+    print("[INFO] Trenowanie modelu XGBoost...")
+    model.fit(X, y_enc, clf__sample_weight=sample_weights)
 
-    # Ewaluacja na zbiorze treningowym
+    # Ocena modelu (Wygenerowanie Twojej tabeli)
     y_pred = model.predict(X)
 
-    print("\n[REPORT]")
+    print("\n" + "="*50)
+    print(" [REPORT - WYNIKI KLASYFIKACJI XGBOOST]")
+    print("="*50)
     print(
         classification_report(
             y_enc,
@@ -141,8 +136,9 @@ def main():
             target_names=label_encoder.classes_
         )
     )
+    print("="*50 + "\n")
 
-    # Zapis modelu i encodera do pliku
+    # Zapis gotowego modelu .pkl
     joblib.dump(
         {
             "model": model,
@@ -151,8 +147,7 @@ def main():
         MODEL_PATH
     )
 
-    print(f"[INFO] Model zapisany w: {MODEL_PATH}")
-
+    print(f"[INFO] Gotowe! Nowy model XGBoost został zapisany w:\n {MODEL_PATH}")
 
 if __name__ == "__main__":
     main()
